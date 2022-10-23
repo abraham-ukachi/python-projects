@@ -76,6 +76,7 @@
 
 # Importing the 'good-stuff'...
 import time # <- python's built-in time module: This stuff can make you 'sleep' ;)
+import random
 
 
 # Let's define some constants, shall we? ;)
@@ -91,7 +92,7 @@ EMOJI_THUMBS_UP = ""
 EMPJI_THUMBS_DOWN = ""
 
 # - language constant
-LANG = "en" # <- default language set to "english", duh! Use 'fr' for french
+LANG = "fr" # <- default language set to "english", duh! Use 'fr' for french
 
 
 # TODO: Create a parent class named `Game`
@@ -139,8 +140,9 @@ class PenduGame:
         self.playerLetters = [] # <- a list of letters that the player guessed
         self.found = False # <- If `True` the player has found the word
         self.currentLivesCount = 0 # <- the number of lives left of the player
-        self.levels = (("beginner", "intermediate", "expert"))
-        self.lives = {"beginner": 10, "intermediate": 5, "expert": 2}
+        self.tries = 0 # <- The number of attempts or tries made by the player
+        self.levels = (("beginner", "intermediate", "advanced", "expert"))
+        self.lives = {"beginner": 15, "intermediate": 12, "advanced": 6, "expert": 3}
         # set the default level to beginner
         self.defaultLevel = "beginner"
          
@@ -156,16 +158,24 @@ class PenduGame:
         self.strings["en"]["chooseLevel"] = "Choose your level:"
         self.strings["en"]["beginner"] = "Beginner"
         self.strings["en"]["intermediate"] = "Intermediate"
+        self.strings["en"]["advanced"] = "Advanced"
         self.strings["en"]["expert"] = "Expert"
         self.strings["en"]["chooseLevelAgain"] = "Please enter a number from {} to {}:"
         self.strings["en"]["startingGame"] = "Starting the game..."
-        self.strings["en"]["gameInfo1"] = "One word out of \x1b[4m%s words\x1b[0m has been selected randomly."
+        self.strings["en"]["gameInfo1"] = "One word out of \x1b[4m%s french words\x1b[0m has been selected randomly."
         self.strings["en"]["gameInfo2"] = "To win this game, you've got to guess all letters correctly"
-        self.strings["en"]["livesLeft"] = "You've got {} live{} left"
-        self.strings["en"]["lettersGiven"] = "Letters previously given:"
+        self.strings["en"]["livesLeft"] = "You've got \x1b[36m{} live{}\x1b[0m left"
+        self.strings["en"]["lettersGiven"] = "Letters previously given: \x1b[36m{}\x1b[0m"
         self.strings["en"]["chooseLetter"] = "What's your letter?"
         self.strings["en"]["good"] = "Good"
         self.strings["en"]["bad"] = "Nope"
+        self.strings["en"]["congratulations"] = "Congratulations! You've won !!!"
+        self.strings["en"]["youLost"] = "Oops! You've lost !!!"
+        self.strings["en"]["results"] = "Results"
+        self.strings["en"]["resultLevel"] = "Level"
+        self.strings["en"]["resultTries"] = "Attempts"
+        self.strings["en"]["resultWord"] = "Word"
+        self.strings["en"]["resultLives"] = "Lives remaining"
 
 
 
@@ -174,16 +184,25 @@ class PenduGame:
         self.strings["fr"]["chooseLevel"] = "Choisissez votre niveau :"
         self.strings["fr"]["beginner"] = "Débutant"
         self.strings["fr"]["intermediate"] = "Intermediare"
+        self.strings["fr"]["advanced"] = "Supérieure"
         self.strings["fr"]["expert"] = "Expert"
         self.strings["fr"]["chooseLevelAgain"] = "Veuillez entrer un nombre de {} à {} :"
         self.strings["fr"]["startingGame"] = "Démarrage du jeu..."
         self.strings["fr"]["gameInfo1"] = "Un mot sur \x1b[4m%s mots\x1b[0m a été choisi au hasard"
         self.strings["fr"]["gameInfo2"] = "Pour gagner ce jeu, vous devez deviner toutes les lettres correctement"
-        self.strings["fr"]["livesLeft"] = "Il vous reste {} vie{}"
-        self.strings["fr"]["lettersGiven"] = "Lettres proposées :"
+        self.strings["fr"]["livesLeft"] = "Il vous reste \x1b[36m{} vie{}\x1b[0m"
+        self.strings["fr"]["lettersGiven"] = "Lettres proposées : \x1b[36m{}\x1b[0m"
         self.strings["fr"]["chooseLetter"] = "Quelle lettre proposes tu ?"
         self.strings["fr"]["good"] = "Bon"
         self.strings["fr"]["bad"] = "Mince"
+        self.strings["fr"]["congratulations"] = "Félicitations! Vous avez gagné !!!"
+        self.strings["fr"]["results"] = "Resultats"
+        self.strings["fr"]["youLost"] = "C'est domage! Vous avez perdu !!!"
+        self.strings["fr"]["resultLevel"] = "Niveau"
+        self.strings["fr"]["resultTries"] = "Tentatives"
+        self.strings["fr"]["resultWord"] = "Mot"
+        self.strings["fr"]["resultLives"] = "Nombre de vie(s) restant(s)"
+
         
 
         ## ==== PRIVATE VARIABLES
@@ -193,7 +212,9 @@ class PenduGame:
 
         # self._playerLevelChanged = False
         # self.__livesLeft__ = -1
-
+    
+    
+    
     # PRIVATE METHODS
     
     def _loadWords(self, filename = "dico_france.txt", enc = "cp1250"):
@@ -228,23 +249,10 @@ class PenduGame:
         # print("[_loadWords](2): %d words were loaded successfully" % len(self.words))
 
         # Tell the world how many words were loaded
-        print(PROMPT_SIGN_OUT + self.getString("gameInfo1") % len(self.words))
-        print(PROMPT_SIGN_OUT + self.getString("gameInfo2"))
+        print(self.getString("gameInfo1") % len(self.words))
+        print(self.getString("gameInfo2"))
     
-    ## --- private getters
     
-
-    def _getLivesOfLevel(self, level):
-        """
-        Returns the lives of the given `level`
-
-        :param { str } level
-        :return { int } lives
-        """
-
-        # TODO: make sure the given `level` is valid before proceeding
-
-        return self.lives[level]
 
     def _checkLetter(self, letter):
         """
@@ -256,12 +264,22 @@ class PenduGame:
         
         # Initialize the `result` variable
         result = False
+
         
         # if the given `letter` exists in the `randomWord` and hasn't been guessed yet
         if (letter in self.randomWord) and (letter not in self.playerLetters):
             # ...set the `result` to `True`
-            result = True
+            result = True 
         
+
+
+       # DEBUG: [4dbsmaster]: tell me about it :)
+        print("[_checkLetter](1): randomWord => ", self.randomWord)
+        print("[_checkLetter](2): letter => ", letter)
+        print("[_checkLetter](3): ~ in randomWord? => ", letter in self.randomWord)
+        print("[_checkLetter](4): ~ not in playerLetters => ", \
+                letter not in self.playerLetters)
+
         # return the result
         return result
 
@@ -287,7 +305,7 @@ class PenduGame:
             # ...at each `newHiddenLetter`'s position;
             # - substitute the separator with its corresponding letter from `randomWord`;
             # - Only if that `randomWord` letter can be found in `playerLetters`
-            newHiddenLetters[i] = rw[i] if (rw[i] in this.playerLetters) else separator
+            newHiddenLetters[i] = rw[i] if (rw[i] in self.playerLetters) else separator
 
 
         # Update the `_hiddenLetters` list with `newHiddenLetters`
@@ -305,7 +323,7 @@ class PenduGame:
         # playerLevel = self.getPlayerLevel()
         
         # update the current lives count
-        self.currentLivesCount = self.lives[playerLevel]
+        self.currentLivesCount = self._getLivesOfLevel(playerLevel)
 
         # get the locale name of the level (eg. 'Debutant' in french)
         playerLevelName = self.getString(playerLevel)
@@ -328,16 +346,33 @@ class PenduGame:
 
         :param { str } letter
         """
-
+        
         # NOTE: Do not reduce the player's lives, 'cause he got a letter right
 
-        # Add the given `letter` to the `playerLetters` list
-        self.playerLetters.append(letter)
+        # Update the `playerLetters` list with the given `letter`
+        self._updatePlayerLetters(letter)
+        
+        # Get the player's word from `hiddenLetters` list
+        playerWord = ''.join(self._hiddenLetters)
 
-        # Notify the hidden letters of this recent change
-        this._notifyHiddenLetters()
+        # DEBUG [4dbsmaster]: tell me about it :)
+        print("[_letterGoodHandler]: playerWord => ", playerWord)
 
+        # If lowercased `playerWord` is the same as lowercased `randomeWord`...
+        if playerWord.lower() == self.randomWord.lower():
+            # ...PLAYER HAS WON THE GAME !!!
+    
+            # Congratulate the player in green
+            print("\n\x1b[32m{}\x1b[0m".format(self.getString("congratulations")))
 
+            # show a star
+            self.showStar()
+            
+            # show the results of the game
+            self.showGameResults()
+
+            # stop the game
+            self.stopGame(True)
 
 
     def _letterBadHandler(self, letter):
@@ -355,9 +390,42 @@ class PenduGame:
 
         # DEBUG [4dbsmaster]: tell me about it :)
         print("[_letterBadHandler]: letter => ", letter)
+        
+        # Update the `playerLetters` list with the given `letter`
+        self._updatePlayerLetters(letter) 
+
+
+    def _updatePlayerLetters(self, letter):
+        """
+        Updates the `playerLetters` list with the given `letter`
+
+        :param { str } letter
+        """
+        
+        # Add the given `letter` to the `playerLetters` list
+        self.playerLetters.append(letter)
+        # Notify the hidden letters of this recent change
+        self._notifyHiddenLetters()
+
+
+    ## --- private getters
+
+    def _getLivesOfLevel(self, level):
+        """
+        Returns the lives of the given `level`
+
+        :param { str } level
+        :return { int } lives
+        """
+
+        # TODO: make sure the given `level` is valid before proceeding
+
+        return self.lives[level]
     
+    
+    
+
     # PUBLIC METHODS
-    
     
     def showWelcomeMessage(self):
         """
@@ -375,6 +443,123 @@ class PenduGame:
         print("\x1b[0m") # <- stop coloring
       
     
+    def showCurrentStatus(self, playerLevel):
+        """
+        Displays the current status of the player.
+        The status will show the number of lives left, letters guessed, and hidden letters.
+
+        :param { str } playerLevel
+        """
+        # Get the total lives of a player's level as `totalLives`
+        # totalLives = self._getLivesOfLevel(playerLevel);
+
+        # Get the current number of lives left as `livesCount`
+        livesCount = self.currentLivesCount
+
+        # Get the letters guessed or entered by the player as `letters`
+        letters = ' '.join(self.playerLetters)
+
+        # Get the hidden letters as `hiddenLetters`
+        # However if the player is an 'expert', he/she doesn't need to see this.
+        hiddenLetters = ' '.join(self._hiddenLetters) if playerLevel != 'expert' else ''
+        
+        # Okay, now that we've got all three values...:
+
+        # HACK: adding s to the word "live" if the player has more than one live
+        s = 's' if livesCount > 1 else ''
+
+        # 1. Tell the player how many lives he/she's got left
+        print(PROMPT_SIGN_OUT + self.getString("livesLeft").format(livesCount, s))
+
+        # 2. Show the player his/her chosen/guessed letters,
+        print(PROMPT_SIGN_OUT + self.getString("lettersGiven").format(letters))
+
+        # 3. Show the hidden letters
+        print("\n" + hiddenLetters + "\n")
+
+        
+    def showStar(self):
+        """
+        Displays a star in ASCII
+        """
+
+        # Create an a star
+        star = """
+              ,
+           \  :  /
+        `. __/ \__ .'
+        _ _\     /_ _
+           /_   _\ 
+         .'  \ /  `.
+           /  :  \  
+              '
+        """
+
+        # ^^^^^^ Thanks to "Hayley Jane Wakenshaw" - an ascii artist \
+        #       from [ASCII ART](https://www.asciiart.eu/ascii-artists)
+
+        # Show the star
+        print(star)
+    
+    def showSadFace(self):
+        """
+        Displays an emoji-like sad face in ASCII
+        """
+
+        # Create a sad face
+        sadFace = """
+             .-""""""-.
+           .'          '.
+          /   O      O   \ 
+         :           `    :
+         |           `    | 
+         :    .------.    :
+          \  '        '  /
+           '.          .'
+             '-......-'
+        
+        """ 
+        # ^^^^^^^^^ Thanks to "Joan Stark" - an ascii artist \
+        #           from [ASCII ART](https://www.asciiart.eu/computers/smileys)
+
+        # Show the sad face
+        print(sadFace)
+
+
+    def showGameResults(self, delay = 0.4):
+        """
+        Displays the game results (i.e. level, tries, word and lives remaining)
+
+        :param { float } delay
+        """
+        # Create a tuple of the result keys
+        resultKeys = (('resultLevel', 'resultTries', 'resultWord', 'resultLives'))
+        
+        results = {}
+
+        # get the plyers level as `resultLevel`
+        results['resultLevel'] = self.getString(self.getPlayerLevel())
+        # get the number of attempts as `resultTries`
+        results['resultTries'] = self.tries
+        # get the random word as `resultWord`
+        results['resultWord'] = self.randomWord
+        # get the number of lives remaining as `resutLives`
+        results['resultLives'] = self.currentLivesCount
+        
+        print("\x1b[2m+++++ %s +++++\x1b[0m" % self.getString('results'))
+
+        # For each key in `resultKeys`
+        for key in resultKeys:
+            # get the result
+            # result = results[key]
+            # if (key == 'level'):
+            #    result = self.getString(result)
+            # ...print the corresponding result using the `key`
+            print("\x1b[2m+ {} --> {}\x1b[0m".format(self.getString(key), results[key]))
+            # but wait for 
+            time.sleep(delay)
+ 
+
     def updatePlayerLevel(self, playerLevel):
         """
         Method used to update the player's level
@@ -448,11 +633,12 @@ class PenduGame:
         return playerLevel
     
     
-    def startGame(self, defaultLevel = 'beginner'):
+    def startGame(self, defaultLevel = 'beginner', speed = 0.6):
         """
         Method used to start this game
         
-        :param { str } level: the default player's level
+        :param { str } defaultLevel: the default player's level
+        :param { float } speed
         """
         
         # Get the player's level
@@ -470,12 +656,18 @@ class PenduGame:
         # ...print out 50 forward slashes in gray (i.e. "/")
         print("\x1b[2m{}\x1b[0m".format("/" * 50))
 
-        # TODO: Load the words
+        # Load the words
         self._loadWords()
+        
+        # Update the random word
+        self.randomWord = self.getRandomWord()
+        
+        # Notify the hidden letters
+        self._notifyHiddenLetters()
 
         # Wait for just 50 milliseconds 
         # NOTE: this is not necessary but, "It's a game!!" 
-        time.sleep(0.5)
+        time.sleep(speed)
 
         # Now, it's time to use the famous `while` loop 
         # So... while the game is active and the player hasn't found the random word yet
@@ -486,11 +678,14 @@ class PenduGame:
 
             # then, show the current status of the player
             # TODO: Define a `showCurrentStatus` method
-            # self.showCurrentStatus(currentLevel)
+            self.showCurrentStatus(currentLevel)
 
             # Request a letter from the player as `letter`
             letter = input(PROMPT_SIGN_IN + "%s " % self.getString("chooseLetter"))
             
+            # Update the number of tries
+            self.tries += 1
+
             # Check the letter
             letterIsGood = self._checkLetter(letter)
 
@@ -501,13 +696,22 @@ class PenduGame:
             else:
                 # if not, call the letterBad handler :(
                 self._letterBadHandler(letter)
+            
+            # DEBUG [4dbsmaster]: tell me about it :)
+            print("[startGame](1): letter => %s & tries => %s" % (letter, self.tries))
+            print("[startGame](2): letterIsGood? => ", letterIsGood)
 
     
-    def stopGame(self):
+    def stopGame(self, found = False):
         """
-        Method used to stop the this game
-        """
+        Method used to stop this game
 
+        :param { bool } found
+        """
+        
+        # Update the game's `self.found` attribute with the given `found`
+        self.found = found
+        
         # Stop the game by setting `active` to `False`
         self.active = False
 
@@ -542,9 +746,7 @@ class PenduGame:
 
     def getRandomWord(self):
         """
-        Returns a word randomly from the given `file`
-
-        :param { str } file: path/to/file
+        Returns a random word
         """
         
         # Return a random word from the given `self.words` list only if that 
