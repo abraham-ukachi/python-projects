@@ -81,15 +81,16 @@ import random
 
 # Let's define some constants, shall we? ;)
 
-#Prompt Sign constants
+# Prompt Sign constants
 PROMPT_SIGN_DEFAULT = "\x1b[1m\x1b[34m?\x1b[0m " # <- (bold + blue)
 PROMPT_SIGN_IN = "\x1b[1m\x1b[32m>>\x1b[0m " # <- (bold + green)
 PROMPT_SIGN_OUT = "\x1b[1m\x1b[34m<<\x1b[0m " # <- (bold + blue)
 PROMPT_SIGN_ERR = "\x1b[1m\x1b[31m<<\x1b[0m " # <- (bold + red)
 
-#Emoji constants
-EMOJI_THUMBS_UP = ""
-EMPJI_THUMBS_DOWN = ""
+# Emoji constants
+EMOJI_THUMBS_UP = "\U0001F44D"
+EMOJI_THUMBS_DOWN = "\U0001F44E"
+EMOJI_CHECK_MARK = "\U00002714"
 
 # - language constant
 LANG = "fr" # <- default language set to "english", duh! Use 'fr' for french
@@ -145,6 +146,7 @@ class PenduGame:
         self.lives = {"beginner": 15, "intermediate": 12, "advanced": 6, "expert": 3}
         # set the default level to beginner
         self.defaultLevel = "beginner"
+        self.caseSensitive = False
          
 
 
@@ -162,7 +164,7 @@ class PenduGame:
         self.strings["en"]["expert"] = "Expert"
         self.strings["en"]["chooseLevelAgain"] = "Please enter a number from {} to {}:"
         self.strings["en"]["startingGame"] = "Starting the game..."
-        self.strings["en"]["gameInfo1"] = "One word out of \x1b[4m%s french words\x1b[0m has been selected randomly."
+        self.strings["en"]["gameInfo1"] = "Hello, one word out of \x1b[4m%s french words\x1b[0m has been selected randomly."
         self.strings["en"]["gameInfo2"] = "To win this game, you've got to guess all letters correctly"
         self.strings["en"]["livesLeft"] = "You've got \x1b[36m{} live{}\x1b[0m left"
         self.strings["en"]["lettersGiven"] = "Letters previously given: \x1b[36m{}\x1b[0m"
@@ -188,7 +190,7 @@ class PenduGame:
         self.strings["fr"]["expert"] = "Expert"
         self.strings["fr"]["chooseLevelAgain"] = "Veuillez entrer un nombre de {} à {} :"
         self.strings["fr"]["startingGame"] = "Démarrage du jeu..."
-        self.strings["fr"]["gameInfo1"] = "Un mot sur \x1b[4m%s mots\x1b[0m a été choisi au hasard"
+        self.strings["fr"]["gameInfo1"] = "Bonjour, un mot sur \x1b[4m%s mots\x1b[0m a été choisi au hasard"
         self.strings["fr"]["gameInfo2"] = "Pour gagner ce jeu, vous devez deviner toutes les lettres correctement"
         self.strings["fr"]["livesLeft"] = "Il vous reste \x1b[36m{} vie{}\x1b[0m"
         self.strings["fr"]["lettersGiven"] = "Lettres proposées : \x1b[36m{}\x1b[0m"
@@ -264,21 +266,25 @@ class PenduGame:
         
         # Initialize the `result` variable
         result = False
-
+        
+        # lowercase the `letter`
+        letter = letter.lower()
+        # lowercae the randomWord too
+        randomWord = self.randomWord.lower()
         
         # if the given `letter` exists in the `randomWord` and hasn't been guessed yet
-        if (letter in self.randomWord) and (letter not in self.playerLetters):
+        if (letter in randomWord) and (letter not in self.playerLetters):
             # ...set the `result` to `True`
             result = True 
         
 
 
-       # DEBUG: [4dbsmaster]: tell me about it :)
-        print("[_checkLetter](1): randomWord => ", self.randomWord)
-        print("[_checkLetter](2): letter => ", letter)
-        print("[_checkLetter](3): ~ in randomWord? => ", letter in self.randomWord)
-        print("[_checkLetter](4): ~ not in playerLetters => ", \
-                letter not in self.playerLetters)
+        # DEBUG: [4dbsmaster]: tell me about it :)
+        # print("[_checkLetter](1): randomWord => ", self.randomWord)
+        # print("[_checkLetter](2): letter => ", letter)
+        # print("[_checkLetter](3): ~ in randomWord? => ", letter in self.randomWord)
+        # print("[_checkLetter](4): ~ not in playerLetters => ", \
+        #        letter not in self.playerLetters)
 
         # return the result
         return result
@@ -356,7 +362,7 @@ class PenduGame:
         playerWord = ''.join(self._hiddenLetters)
 
         # DEBUG [4dbsmaster]: tell me about it :)
-        print("[_letterGoodHandler]: playerWord => ", playerWord)
+        # print("[_letterGoodHandler]: playerWord => ", playerWord)
 
         # If lowercased `playerWord` is the same as lowercased `randomeWord`...
         if playerWord.lower() == self.randomWord.lower():
@@ -374,25 +380,71 @@ class PenduGame:
             # stop the game
             self.stopGame(True)
 
+            # reset the game
+            self.resetGame()
 
+        else:
+            # The player still got some lives left, and guessed a letter correctly
+            # wait for half a second
+            time.sleep(0.5)
+            # Inform the player in green
+            print("\x1b[32m{} {} {}\x1b[0m".format(EMOJI_CHECK_MARK, \
+                    self.getString("good"), EMOJI_THUMBS_UP))
+
+            # wait for 1 second before proceeding
+            time.sleep(1)
+
+    
     def _letterBadHandler(self, letter):
         """
         Handler that is called whenever the player's given `letter` is bad or incorrect
-
+        
         :param { str } letter
         """
         
-        # If the game is still active and the current lives count is 0 or more...
-        if self.active and self.currentLivesCount >= 0: 
+        # If the game is still active and the current lives count is more than 0...
+        if self.active and self.currentLivesCount > 0: 
             # ...TAKE A LIFE!!! - Reduce the player's remaining lives by 1
             self.currentLivesCount -= 1
-
+        
+        
 
         # DEBUG [4dbsmaster]: tell me about it :)
-        print("[_letterBadHandler]: letter => ", letter)
+        # print("[_letterBadHandler]: letter => ", letter)
         
         # Update the `playerLetters` list with the given `letter`
         self._updatePlayerLetters(letter) 
+
+        # If the playeer has no more lives left ...
+        if self.currentLivesCount == 0:
+            # ...PLAYER HAS LOST THE GAME !!!
+
+            # Inform the plyaer in red
+            print("\n\x1b[31m{}\x1b[0m".format(self.getString("youLost")))
+
+            # show a sad face
+            self.showSadFace()
+
+            # show the resuls of the game
+            self.showGameResults()
+
+            # stop the game
+            self.stopGame(False)
+
+            # reset the game
+            self.resetGame()
+
+        else:
+            # The player still got some lives left, but didn't guess a letter correctly
+
+            # wait for half a second
+            time.sleep(0.5)
+            # Inform the player in red
+            print("\x1b[31m{} {} {}\x1b[0m".format("X", \
+                    self.getString("bad"), EMOJI_THUMBS_DOWN))
+
+            # wait for 1 second before proceeding
+            time.sleep(1)
 
 
     def _updatePlayerLetters(self, letter):
@@ -460,21 +512,22 @@ class PenduGame:
         letters = ' '.join(self.playerLetters)
 
         # Get the hidden letters as `hiddenLetters`
-        # However if the player is an 'expert', he/she doesn't need to see this.
-        hiddenLetters = ' '.join(self._hiddenLetters) if playerLevel != 'expert' else ''
-        
+        hiddenLetters = ' '.join(self._hiddenLetters)
+
         # Okay, now that we've got all three values...:
 
         # HACK: adding s to the word "live" if the player has more than one live
         s = 's' if livesCount > 1 else ''
-
+        
         # 1. Tell the player how many lives he/she's got left
         print(PROMPT_SIGN_OUT + self.getString("livesLeft").format(livesCount, s))
-
+        
         # 2. Show the player his/her chosen/guessed letters,
-        print(PROMPT_SIGN_OUT + self.getString("lettersGiven").format(letters))
-
-        # 3. Show the hidden letters
+        # However if the player is an 'expert', he/she doesn't need to see this.
+        if playerLevel != "expert":
+            print(PROMPT_SIGN_OUT + self.getString("lettersGiven").format(letters))
+        
+        # 3. Show the hidden letters if `playerLevel`
         print("\n" + hiddenLetters + "\n")
 
         
@@ -498,8 +551,8 @@ class PenduGame:
         # ^^^^^^ Thanks to "Hayley Jane Wakenshaw" - an ascii artist \
         #       from [ASCII ART](https://www.asciiart.eu/ascii-artists)
 
-        # Show the star
-        print(star)
+        # Show the star in green
+        print("\x1b[32m%s\x1b[0m" % star)
     
     def showSadFace(self):
         """
@@ -508,7 +561,8 @@ class PenduGame:
 
         # Create a sad face
         sadFace = """
-             .-""""""-.
+
+             .--------.
            .'          '.
           /   O      O   \ 
          :           `    :
@@ -522,8 +576,8 @@ class PenduGame:
         # ^^^^^^^^^ Thanks to "Joan Stark" - an ascii artist \
         #           from [ASCII ART](https://www.asciiart.eu/computers/smileys)
 
-        # Show the sad face
-        print(sadFace)
+        # Show the sad face in red
+        print("\x1b[31m%s\x1b[0m" % sadFace)
 
 
     def showGameResults(self, delay = 0.4):
@@ -660,7 +714,7 @@ class PenduGame:
         self._loadWords()
         
         # Update the random word
-        self.randomWord = self.getRandomWord()
+        self.randomWord = self.getRandomWord(self.caseSensitive)
         
         # Notify the hidden letters
         self._notifyHiddenLetters()
@@ -672,7 +726,7 @@ class PenduGame:
         # Now, it's time to use the famous `while` loop 
         # So... while the game is active and the player hasn't found the random word yet
         # Or if the player ain't got no more lives...
-        while self.active and not self.found or self.currentLivesCount < 0:
+        while (self.active and not self.found) or (self.currentLivesCount > 0):
             # ...print out 50 plus signs in gray (i.e. "+")
             print("\x1b[2m{}\x1b[0m".format("+" * 50))
 
@@ -682,7 +736,12 @@ class PenduGame:
 
             # Request a letter from the player as `letter`
             letter = input(PROMPT_SIGN_IN + "%s " % self.getString("chooseLetter"))
-            
+           
+            # if the game is not case sensitive...
+            if self.caseSensitive == False:
+                # ...uppercase the `letter`
+                letter = letter.upper() # <- NOTE: Not the best-looking code but it works.
+
             # Update the number of tries
             self.tries += 1
 
@@ -698,8 +757,8 @@ class PenduGame:
                 self._letterBadHandler(letter)
             
             # DEBUG [4dbsmaster]: tell me about it :)
-            print("[startGame](1): letter => %s & tries => %s" % (letter, self.tries))
-            print("[startGame](2): letterIsGood? => ", letterIsGood)
+            # print("[startGame](1): letter => %s & tries => %s" % (letter, self.tries))
+            # print("[startGame](2): letterIsGood? => ", letterIsGood)
 
     
     def stopGame(self, found = False):
@@ -715,6 +774,23 @@ class PenduGame:
         # Stop the game by setting `active` to `False`
         self.active = False
 
+        # TODO: Add a replay feature (e.g. of msg: "Do you wanna play again? (y/N))
+
+    def resetGame(self):
+        """
+        Method used to reset all the values of the game
+        """
+        
+        # public values
+        self.words = []
+        self.randomWord = ""
+        self.tries = 0
+        self.currentLivesCount = 0
+        
+        
+        # private values
+        self._playerLevel = ""
+        self._hiddenLetters = []
 
 
     ## --- public getters
@@ -744,15 +820,26 @@ class PenduGame:
         return self._playerLevel
    
 
-    def getRandomWord(self):
+    def getRandomWord(self, caseSensitive = False):
         """
         Returns a random word
+
+        :param { bool } caseSensitive
         """
         
-        # Return a random word from the given `self.words` list only if that 
+        # Get the random word from the given `self.words` list only if that 
         # list is not empty; if the `words` list is empty however, 
-        # just return an empty string (i.e. '')
-        return random.choice(self.words) if len(self.words) > 0 else ''
+        # just use an empty string (i.e. '')
+        randomWord = random.choice(self.words) if len(self.words) > 0 else ''
+        
+        # If the game is not case-sensitive and ther's actually a random word...
+        if caseSensitive == False and len(randomWord) > 0:
+            # ...uppercase all the letters in `randomWord`
+            randomWord = randomWord.upper()
+        
+        # Return the random word
+        return randomWord
+
 
 
 
