@@ -1,4 +1,6 @@
 # `python-projects`
+> IMPORTANT: This is a work in progress and subject to major changes until all jobs are completed
+
 An additional school project on how to intuitively create or develop 2 french games (ie. **Le Pendu** &amp; **Morpion 1v1**) with Python
 
 
